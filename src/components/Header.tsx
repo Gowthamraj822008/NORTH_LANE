@@ -37,10 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     applications
   } = useApp();
 
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
-
-  const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
 
   const getPageTitle = () => {
     switch (activePage) {
@@ -60,6 +57,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         return 'Placement Readiness Score';
       case 'progress':
         return 'Roadmap Progress Tracking';
+      case 'saved-internships':
+        return 'Saved & Bookmarked Opportunities';
       case 'internships':
         return 'Internship & Job Match Browser';
       case 'applications':
@@ -157,34 +156,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         <button
           id="header-resume-upload-btn"
           onClick={() => setIsResumeModalOpen(true)}
-          className="hidden md:flex items-center gap-1 px-2 py-1 rounded bg-[#1E2228] hover:bg-[#282D36] text-[#3B82F6] border border-[#3B82F6]/40 text-[11px] font-mono font-bold"
+          className="flex items-center gap-1 px-2 py-1 rounded bg-[#1E2228] hover:bg-[#282D36] text-[#3B82F6] border border-[#3B82F6]/40 text-[11px] font-mono font-bold"
           title="Upload or Parse Resume"
         >
           <Upload className="w-3 h-3" />
-          <span>RESUME</span>
+          <span className="hidden sm:inline">RESUME</span>
         </button>
 
         {/* Notifications Popover Bell */}
-        <div className="relative">
-          <button
-            id="notifications-bell-btn"
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="p-1.5 rounded text-[#8A919B] hover:text-white hover:bg-[#1E2228] border border-[#2D3139] relative transition-colors"
-            title="System Notifications"
-            aria-label="View notifications"
-          >
-            <Bell className="w-3.5 h-3.5" />
-            {unreadNotificationsCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#3B82F6] text-white text-[9px] font-bold flex items-center justify-center font-mono animate-pulse">
-                {unreadNotificationsCount}
-              </span>
-            )}
-          </button>
-
-          {isNotificationsOpen && (
-            <NotificationsPopover onClose={() => setIsNotificationsOpen(false)} />
-          )}
-        </div>
+        <NotificationsPopover />
 
         {/* Switch to Landing Page or Reset */}
         <div className="flex items-center gap-1">

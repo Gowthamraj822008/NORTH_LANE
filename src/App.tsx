@@ -33,6 +33,8 @@ const MainAppContent: React.FC = () => {
         return <DashboardView />;
       case 'internships':
         return <InternshipBrowserView />;
+      case 'saved-internships':
+        return <InternshipBrowserView initialSavedOnly={true} />;
       case 'applications':
         return <ApplicationTrackingView />;
       case 'organization-portal':

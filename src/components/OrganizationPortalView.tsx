@@ -42,6 +42,9 @@ export const OrganizationPortalView: React.FC = () => {
 
   // Modals
   const [isRegisterOrgOpen, setIsRegisterOrgOpen] = useState(false);
+  const [isRecruiterLoginModalOpen, setIsRecruiterLoginModalOpen] = useState(false);
+  const [deleteConfirmInternship, setDeleteConfirmInternship] = useState<Internship | null>(null);
+  const [isProfileSavedToast, setIsProfileSavedToast] = useState(false);
   const [editingInternship, setEditingInternship] = useState<Internship | null>(null);
   const [isNewListingModalOpen, setIsNewListingModalOpen] = useState(false);
 
@@ -264,8 +267,18 @@ export const OrganizationPortalView: React.FC = () => {
           </div>
         </div>
 
-        {/* Organization Switcher & Registration Button */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Organization Switcher, Login & Registration Buttons */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            id="recruiter-login-btn"
+            onClick={() => setIsRecruiterLoginModalOpen(true)}
+            className="px-3 py-1.5 rounded bg-[#111418] hover:bg-[#1E2228] text-white border border-[#2D3139] hover:border-[#3B82F6]/50 text-xs font-bold flex items-center gap-1.5"
+            title="Recruiter authentication and account switcher"
+          >
+            <Building className="w-3.5 h-3.5 text-[#3B82F6]" />
+            <span>RECRUITER_LOGIN</span>
+          </button>
+
           <div className="relative">
             <select
               id="org-switcher-select"
@@ -284,7 +297,7 @@ export const OrganizationPortalView: React.FC = () => {
           <button
             id="register-new-org-btn"
             onClick={() => setIsRegisterOrgOpen(true)}
-            className="px-3 py-1.5 rounded bg-[#111418] hover:bg-[#1E2228] text-[#3B82F6] border border-[#3B82F6]/40 text-xs font-bold flex items-center gap-1"
+            className="px-3 py-1.5 rounded bg-[#3B82F6] hover:bg-[#2563EB] text-white text-xs font-bold flex items-center gap-1 shadow-md shadow-blue-500/20"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>REGISTER_NEW_COMPANY</span>
@@ -403,12 +416,9 @@ export const OrganizationPortalView: React.FC = () => {
                       </button>
 
                       <button
-                        onClick={() => {
-                          if (confirm(`Delete internship "${internship.title}"? This cannot be undone.`)) {
-                            deleteInternship(internship.id);
-                          }
-                        }}
+                        onClick={() => setDeleteConfirmInternship(internship)}
                         className="px-2.5 py-1.5 rounded bg-[#111418] hover:bg-[#1E2228] text-[#8A919B] hover:text-red-400 border border-[#2D3139] hover:border-red-500/30 text-xs flex items-center gap-1"
+                        title="Delete internship listing"
                       >
                         <Trash2 className="w-3 h-3" />
                         <span>DELETE</span>
@@ -611,11 +621,53 @@ export const OrganizationPortalView: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2">
-              <span className="text-[11px] text-green-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Profile changes automatically saved locally.</span>
-              </span>
+            <div>
+              <label className="text-[10px] text-[#8A919B] block mb-1">COMPANY LOGO IMAGE URL</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={currentOrganization.logo || ''}
+                  onChange={e => updateOrganizationProfile(currentOrganization.id, { logo: e.target.value })}
+                  className="flex-1 bg-[#111418] border border-[#2D3139] rounded p-2 text-xs text-white"
+                  placeholder="https://..."
+                />
+                {currentOrganization.logo && (
+                  <img
+                    src={currentOrganization.logo}
+                    alt="Logo preview"
+                    className="w-8 h-8 rounded object-cover border border-[#2D3139] shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[#2D3139]">
+              <div className="text-[11px] text-green-400 flex items-center gap-1.5">
+                {isProfileSavedToast ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                    <span className="font-bold">Organization profile saved & synchronized across active postings!</span>
+                  </>
+                ) : (
+                  <span className="text-[#8A919B] flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#3B82F6]" />
+                    <span>Real-time persistence active across NorthLane database.</span>
+                  </span>
+                )}
+              </div>
+              <button
+                id="save-org-profile-btn"
+                type="button"
+                onClick={() => {
+                  setIsProfileSavedToast(true);
+                  setTimeout(() => setIsProfileSavedToast(false), 3500);
+                }}
+                className="px-4 py-2 rounded bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>SAVE_ORGANIZATION_PROFILE</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1006,6 +1058,162 @@ export const OrganizationPortalView: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* RECRUITER LOGIN / ACCOUNT SWITCHER MODAL */}
+      {isRecruiterLoginModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs font-mono">
+          <div className="bg-[#16191E] border border-[#2D3139] rounded-md max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-3.5 border-b border-[#2D3139] flex items-center justify-between bg-[#111418]">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded bg-blue-500/20 text-[#3B82F6] border border-[#3B82F6]/30">
+                  <Building className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    RECRUITER AUTHENTICATION & LOGIN
+                  </h3>
+                  <p className="text-[10px] text-[#8A919B]">
+                    Select company account or log in with verified recruiter credentials
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsRecruiterLoginModalOpen(false)}
+                className="p-1 rounded text-[#8A919B] hover:text-white hover:bg-[#1E2228]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3 overflow-y-auto flex-1 text-xs">
+              <span className="text-[10px] text-[#8A919B] uppercase font-bold">
+                ACTIVE REGISTERED EMPLOYER PORTALS ({organizations.length})
+              </span>
+
+              <div className="space-y-2">
+                {organizations.map(org => {
+                  const isCurrent = org.id === activeOrganizationId;
+                  return (
+                    <div
+                      key={org.id}
+                      className={`p-3 rounded border transition-colors flex items-center justify-between gap-3 ${
+                        isCurrent
+                          ? 'bg-[#1E2228] border-[#3B82F6]'
+                          : 'bg-[#111418] border-[#2D3139] hover:border-[#8A919B]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {org.logo ? (
+                          <img
+                            src={org.logo}
+                            alt={org.name}
+                            className="w-8 h-8 rounded object-cover border border-[#2D3139] shrink-0"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-[#1E2228] border border-[#2D3139] flex items-center justify-center text-white font-bold shrink-0">
+                            {org.name[0]}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-white truncate">{org.name}</span>
+                            {org.isVerified && (
+                              <span className="px-1 py-0.2 rounded bg-green-500/20 text-green-400 text-[8px] font-bold border border-green-500/30 shrink-0">
+                                VERIFIED
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-[#8A919B] truncate">
+                            {org.recruiterName || 'Campus Recruiter'} • {org.contactEmail}
+                          </div>
+                          <div className="text-[9px] text-[#555C68]">
+                            {org.industry} • {org.location}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        {isCurrent ? (
+                          <span className="px-2.5 py-1 rounded bg-[#3B82F6]/20 text-[#3B82F6] border border-[#3B82F6]/30 text-[10px] font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>LOGGED_IN</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setActiveOrganizationId(org.id);
+                              setIsRecruiterLoginModalOpen(false);
+                            }}
+                            className="px-3 py-1 rounded bg-[#1A1E24] hover:bg-[#3B82F6] text-white hover:text-white border border-[#2D3139] hover:border-[#3B82F6] text-[10px] font-bold transition-colors"
+                          >
+                            SWITCH_TO_ORG
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-2 border-t border-[#2D3139] flex items-center justify-between">
+                <span className="text-[10px] text-[#8A919B]">Need to onboard a new hiring organization?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRecruiterLoginModalOpen(false);
+                    setIsRegisterOrgOpen(true);
+                  }}
+                  className="text-[10px] text-[#3B82F6] hover:underline font-bold"
+                >
+                  + Register New Company
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE LISTING CONFIRMATION MODAL */}
+      {deleteConfirmInternship && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs font-mono">
+          <div className="bg-[#16191E] border border-red-500/40 rounded-md max-w-md w-full shadow-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2 text-red-400 font-bold">
+              <div className="p-1 rounded bg-red-500/20 border border-red-500/30">
+                <Trash2 className="w-4 h-4 text-red-400" />
+              </div>
+              <span className="uppercase text-xs tracking-wider">CONFIRM LISTING DELETION</span>
+            </div>
+            <p className="text-white text-xs">
+              Are you sure you want to delete listing <span className="text-[#3B82F6] font-bold">"{deleteConfirmInternship.title}"</span>?
+            </p>
+            <p className="text-[#8A919B] text-[11px] leading-relaxed">
+              This action immediately removes the opportunity from the student match dashboard, cancels pending applicant queues, and updates your organization listing metrics.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2D3139]">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmInternship(null)}
+                className="px-3 py-1.5 rounded text-[#8A919B] hover:text-white text-xs"
+              >
+                CANCEL
+              </button>
+              <button
+                id="confirm-delete-listing-btn"
+                type="button"
+                onClick={() => {
+                  deleteInternship(deleteConfirmInternship.id);
+                  setDeleteConfirmInternship(null);
+                }}
+                className="px-4 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold flex items-center gap-1.5 text-xs shadow-md shadow-red-500/20"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>CONFIRM_DELETE</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

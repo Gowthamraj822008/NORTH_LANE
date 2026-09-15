@@ -56,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
   }[] = [
     { id: 'dashboard', label: 'Career Dashboard', icon: LayoutDashboard },
     { id: 'internships', label: 'Internships & Jobs', icon: Briefcase, badge: `${internships.length}` },
+    { id: 'saved-internships', label: 'Saved Internships', icon: Bookmark, badge: bookmarkedInternshipIds.length ? `${bookmarkedInternshipIds.length}` : undefined },
     { id: 'applications', label: 'My Applications', icon: FileCheck2, badge: `${applications.length}` },
     { id: 'skill-gap', label: 'Skill Gap Analysis', icon: Layers, badge: 'AI Fit' },
     { id: 'profile', label: 'Profile & Resume', icon: UserCheck, badge: profile.resume?.atsScore ? `ATS ${profile.resume.atsScore}` : undefined },

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Briefcase,
   Search,
@@ -24,7 +24,11 @@ import {
 import { useApp } from '../context/AppContext';
 import { Internship } from '../types';
 
-export const InternshipBrowserView: React.FC = () => {
+interface InternshipBrowserViewProps {
+  initialSavedOnly?: boolean;
+}
+
+export const InternshipBrowserView: React.FC<InternshipBrowserViewProps> = ({ initialSavedOnly = false }) => {
   const {
     internships,
     savedInternshipIds,
@@ -42,8 +46,14 @@ export const InternshipBrowserView: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedWorkMode, setSelectedWorkMode] = useState<string>('all');
   const [minMatchScore, setMinMatchScore] = useState<number>(0);
-  const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [showSavedOnly, setShowSavedOnly] = useState(initialSavedOnly);
   const [sortBy, setSortBy] = useState<'compatibility' | 'stipend' | 'recent' | 'applicants'>('compatibility');
+
+  useEffect(() => {
+    if (initialSavedOnly) {
+      setShowSavedOnly(true);
+    }
+  }, [initialSavedOnly]);
 
   // Active Modals State
   const [inspectInternship, setInspectInternship] = useState<Internship | null>(null);
