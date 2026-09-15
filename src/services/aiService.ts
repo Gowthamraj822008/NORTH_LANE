@@ -98,6 +98,9 @@ export interface TailoredApplicationAI {
 
 export interface AdvisorChatAI {
   reply: string;
+  response?: string;
+  tips?: string[];
+  actionItems?: string[];
   isLiveInference: boolean;
   model?: string;
   error?: string;

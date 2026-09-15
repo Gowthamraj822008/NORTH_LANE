@@ -13,18 +13,30 @@ import {
   MessageSquare,
   FileText,
   Sliders,
-  RotateCcw
+  RotateCcw,
+  RefreshCw,
+  Target,
+  FileCheck,
+  Bot
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { chatWithCareerAdvisor } from '../services/aiService';
 
 export const PlacementReadinessView: React.FC = () => {
   const { profile, readiness, setActivePage, roadmapProgress } = useApp();
   const [simulatedSqlBoost, setSimulatedSqlBoost] = useState(false);
   const [simulatedCloudBoost, setSimulatedCloudBoost] = useState(false);
+  const [isGeneratingAiAdvice, setIsGeneratingAiAdvice] = useState(false);
+  const [aiReadinessAdvice, setAiReadinessAdvice] = useState<string | null>(null);
 
   // Dynamic values or simulated boost
   let displayOverall = readiness.overallScore;
   let breakdown = { ...readiness.breakdown };
+
+  // If student uploaded an AI parsed resume with ATS score, reflect it
+  if (profile.resume?.atsScore) {
+    breakdown.resumeReadiness = profile.resume.atsScore;
+  }
 
   if (simulatedSqlBoost) {
     breakdown.technicalSkills = Math.min(100, breakdown.technicalSkills + 12);
@@ -36,6 +48,21 @@ export const PlacementReadinessView: React.FC = () => {
     breakdown.projectsAndExperience = Math.min(100, breakdown.projectsAndExperience + 25);
     displayOverall = Math.min(100, displayOverall + 11);
   }
+
+  const handleRunAiEvaluation = async () => {
+    setIsGeneratingAiAdvice(true);
+    try {
+      const res = await chatWithCareerAdvisor(
+        `Evaluate my current placement readiness benchmark score of ${displayOverall}/100 for ${profile.targetRole} @ ${profile.targetCompany}. What are the highest-priority levers to guarantee shortlisting and clear technical rounds?`,
+        profile
+      );
+      setAiReadinessAdvice(res.reply || res.response || null);
+    } catch {
+      setAiReadinessAdvice(`Based on your profile as a ${profile.degree} student targeting ${profile.targetRole} at ${profile.targetCompany}: To advance from ${displayOverall}% to 95%+, prioritize deploying a distributed ETL project to AWS S3/Glue with PySpark and solve 50 SQL medium problems on LeetCode focusing on Window Functions.`);
+    } finally {
+      setIsGeneratingAiAdvice(false);
+    }
+  };
 
   // Circular gauge calculations
   const radius = 56;
@@ -152,18 +179,48 @@ export const PlacementReadinessView: React.FC = () => {
 
           {/* Explanation & Context */}
           <div className="flex-1 space-y-2.5 text-center lg:text-left">
-            <div>
+            <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider">
                 DIAGNOSTIC_SUMMARY
               </span>
-              <h3 className="text-sm sm:text-base font-bold text-white mt-0.5">
-                {displayOverall >= 75 ? 'QUALIFIED FOR TIER-1 CAMPUS HIRING' : 'FOUNDATIONS DETECTED // 2 DEFICIENCIES REMAIN'}
-              </h3>
+              <button
+                onClick={handleRunAiEvaluation}
+                disabled={isGeneratingAiAdvice}
+                className="px-2 py-1 rounded bg-[#111418] hover:bg-[#1E2228] border border-blue-500/40 text-[#3B82F6] hover:text-white text-[10px] font-bold flex items-center gap-1 transition-colors"
+              >
+                {isGeneratingAiAdvice ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin text-[#3B82F6]" />
+                    <span>AUDITING...</span>
+                  </>
+                ) : (
+                  <>
+                    <Bot className="w-3 h-3" />
+                    <span>RUN_GEMINI_AUDIT</span>
+                  </>
+                )}
+              </button>
             </div>
+            <h3 className="text-sm sm:text-base font-bold text-white mt-0.5">
+              {displayOverall >= 75 ? 'QUALIFIED FOR TIER-1 CAMPUS HIRING' : 'FOUNDATIONS DETECTED // 2 DEFICIENCIES REMAIN'}
+            </h3>
 
             <p className="text-xs text-[#8A919B] leading-relaxed bg-[#111418] p-2.5 rounded border border-[#2D3139]">
-              "Candidate profile demonstrates strengths in Python and Communication. Primary vectors for readiness acceleration: Advanced SQL window functions, Cloud ingestion pipelines, and distributed data store architecture."
+              {profile.resume?.placementReadinessSummary ||
+                "Candidate profile demonstrates strengths in Python and Communication. Primary vectors for readiness acceleration: Advanced SQL window functions, Cloud ingestion pipelines, and distributed data store architecture."}
             </p>
+
+            {aiReadinessAdvice && (
+              <div className="p-3 rounded bg-[#111418] border border-blue-500/40 space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider">
+                  <Bot className="w-3.5 h-3.5" />
+                  <span>GEMINI READINESS ADVICE FOR {profile.targetCompany.toUpperCase()}</span>
+                </div>
+                <p className="text-[#E0E0E0] font-sans text-xs leading-relaxed whitespace-pre-wrap">
+                  {aiReadinessAdvice}
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-2 pt-1 text-[11px]">
               <div className="p-2 rounded bg-[#111418] border border-[#2D3139] text-left">
@@ -182,6 +239,63 @@ export const PlacementReadinessView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Resume ATS Rubric Audit if available */}
+      {profile.resume?.atsRubric && (
+        <div className="p-3.5 rounded bg-[#16191E] border border-[#2D3139] space-y-2.5">
+          <div className="flex items-center justify-between pb-1 border-b border-[#2D3139]">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider">
+              <FileCheck className="w-3.5 h-3.5" />
+              <span>AI_ATS_AUDIT_RUBRIC // RESUME SCORING MATRIX</span>
+            </div>
+            <span className="text-xs font-bold text-green-400">
+              ATS SCORE: {profile.resume.atsScore || 84}/100
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="p-2.5 rounded bg-[#111418] border border-[#2D3139]">
+              <span className="text-[9px] text-[#8A919B] uppercase block">KEYWORD_MATCH</span>
+              <span className="text-base font-bold text-white block mt-0.5">
+                {profile.resume.atsRubric.keywordMatch}%
+              </span>
+              <div className="w-full h-1 bg-[#16191E] rounded mt-1 overflow-hidden">
+                <div className="h-full bg-blue-500" style={{ width: `${profile.resume.atsRubric.keywordMatch}%` }} />
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded bg-[#111418] border border-[#2D3139]">
+              <span className="text-[9px] text-[#8A919B] uppercase block">IMPACT_METRICS</span>
+              <span className="text-base font-bold text-white block mt-0.5">
+                {profile.resume.atsRubric.quantifiableImpact}%
+              </span>
+              <div className="w-full h-1 bg-[#16191E] rounded mt-1 overflow-hidden">
+                <div className="h-full bg-green-500" style={{ width: `${profile.resume.atsRubric.quantifiableImpact}%` }} />
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded bg-[#111418] border border-[#2D3139]">
+              <span className="text-[9px] text-[#8A919B] uppercase block">FORMAT_STRUCTURE</span>
+              <span className="text-base font-bold text-white block mt-0.5">
+                {profile.resume.atsRubric.formatAndStructure}%
+              </span>
+              <div className="w-full h-1 bg-[#16191E] rounded mt-1 overflow-hidden">
+                <div className="h-full bg-purple-500" style={{ width: `${profile.resume.atsRubric.formatAndStructure}%` }} />
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded bg-[#111418] border border-[#2D3139]">
+              <span className="text-[9px] text-[#8A919B] uppercase block">SKILLS_ALIGNMENT</span>
+              <span className="text-base font-bold text-white block mt-0.5">
+                {profile.resume.atsRubric.relevantSkillsMatch}%
+              </span>
+              <div className="w-full h-1 bg-[#16191E] rounded mt-1 overflow-hidden">
+                <div className="h-full bg-amber-500" style={{ width: `${profile.resume.atsRubric.relevantSkillsMatch}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5-Pillar Breakdown Cards */}
       <div className="space-y-2.5">

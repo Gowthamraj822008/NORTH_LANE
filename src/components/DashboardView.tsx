@@ -19,9 +19,16 @@ import {
   Star,
   ChevronRight,
   ShieldCheck,
-  Bookmark
+  Bookmark,
+  Send,
+  Bot,
+  User,
+  RefreshCw,
+  Lightbulb,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { chatWithCareerAdvisor } from '../services/aiService';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -38,6 +45,62 @@ export const DashboardView: React.FC = () => {
     bookmarkedInternshipIds,
     applications
   } = useApp();
+
+  // AI Career Mentor chat state
+  const [chatMessages, setChatMessages] = React.useState<Array<{
+    sender: 'user' | 'assistant';
+    text: string;
+    tips?: string[];
+    actionItems?: string[];
+  }>>([
+    {
+      sender: 'assistant',
+      text: `Hello ${profile.name}! I'm your NorthLane Gemini Placement Mentor. I've analyzed your target role (${profile.targetRole} @ ${profile.targetCompany}) and readiness benchmark (${readiness.overallScore}%). How can I assist with your interviews, technical projects, or ATS optimization today?`,
+      tips: [
+        'Amazon DE rounds heavily test SQL Window Functions and Distributed Processing schemas',
+        'Frame your Real-time Log Pipeline project using STAR format with latency/volume metrics'
+      ]
+    }
+  ]);
+  const [chatInput, setChatInput] = React.useState('');
+  const [isAskingAdvisor, setIsAskingAdvisor] = React.useState(false);
+
+  const handleAskMentor = async (queryText?: string) => {
+    const query = queryText || chatInput;
+    if (!query.trim() || isAskingAdvisor) return;
+
+    const userMsg = { sender: 'user' as const, text: query };
+    setChatMessages(prev => [...prev, userMsg]);
+    if (!queryText) setChatInput('');
+    setIsAskingAdvisor(true);
+
+    try {
+      const history = chatMessages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
+      const res = await chatWithCareerAdvisor(query, profile, history);
+      setChatMessages(prev => [
+        ...prev,
+        {
+          sender: 'assistant',
+          text: res.reply || res.response || 'No response generated.',
+          tips: res.tips,
+          actionItems: res.actionItems
+        }
+      ]);
+    } catch {
+      setChatMessages(prev => [
+        ...prev,
+        {
+          sender: 'assistant',
+          text: `For ${profile.targetRole} interviews at ${profile.targetCompany}, focus on demonstrating hands-on mastery in SQL window functions (ROW_NUMBER, LEAD/LAG), distributed storage partitions in AWS/S3, and idempotency in ETL jobs. Make sure your GitHub demonstrates real test coverage.`
+        }
+      ]);
+    } finally {
+      setIsAskingAdvisor(false);
+    }
+  };
 
   const nextStep =
     roadmap.find(s => s.status === 'in_progress') ||
@@ -470,6 +533,140 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Gemini AI Placement & Career Mentor */}
+      <div className="p-4 rounded bg-[#16191E] border border-[#2D3139] space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#2D3139]">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-[#3B82F6]">
+              <Bot className="w-3.5 h-3.5" />
+            </div>
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <span>GEMINI_CAREER_COPILOT // LIVE PLACEMENT ADVISOR</span>
+              <span className="px-1.5 py-0.2 rounded bg-blue-500/20 text-[#3B82F6] text-[9px]">GEMINI 2.5 FLASH</span>
+            </h3>
+          </div>
+          <div className="text-[10px] text-[#8A919B]">
+            CONTEXT: <span className="text-white font-semibold">{profile.targetRole} @ {profile.targetCompany}</span>
+          </div>
+        </div>
+
+        {/* Quick Prompt Shortcuts */}
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            `What are Amazon's key interview rounds for ${profile.targetRole}?`,
+            'How can I frame my Distributed Log Pipeline project with STAR?',
+            'What SQL window functions are most commonly tested?',
+            'How can I boost my readiness score above 90%?'
+          ].map((prompt, i) => (
+            <button
+              key={i}
+              onClick={() => handleAskMentor(prompt)}
+              disabled={isAskingAdvisor}
+              className="px-2.5 py-1 rounded bg-[#111418] hover:bg-[#1E2228] text-[#8A919B] hover:text-white border border-[#2D3139] text-[10px] flex items-center gap-1 transition-colors text-left"
+            >
+              <Lightbulb className="w-3 h-3 text-amber-400 shrink-0" />
+              <span>{prompt}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Chat Messages */}
+        <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+          {chatMessages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={`p-3 rounded border text-xs ${
+                msg.sender === 'assistant'
+                  ? 'bg-[#111418] border-[#2D3139] text-[#E0E0E0]'
+                  : 'bg-[#1A2333] border-blue-500/40 text-blue-100'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1 text-[10px] text-[#8A919B]">
+                {msg.sender === 'assistant' ? (
+                  <>
+                    <Bot className="w-3 h-3 text-[#3B82F6]" />
+                    <span className="font-bold text-[#3B82F6]">NORTHLANE_AI</span>
+                  </>
+                ) : (
+                  <>
+                    <User className="w-3 h-3 text-white" />
+                    <span className="font-bold text-white">{profile.name.toUpperCase()}</span>
+                  </>
+                )}
+              </div>
+              <p className="leading-relaxed whitespace-pre-wrap font-sans text-[12px]">{msg.text}</p>
+
+              {/* Optional Tips */}
+              {msg.tips && msg.tips.length > 0 && (
+                <div className="mt-2.5 pt-2 border-t border-[#2D3139] space-y-1">
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
+                    KEY TAKEAWAYS & TIPS:
+                  </span>
+                  <ul className="space-y-0.5">
+                    {msg.tips.map((tip, tIdx) => (
+                      <li key={tIdx} className="text-[11px] text-[#A0A6B2] flex items-start gap-1.5">
+                        <span className="text-amber-400 font-bold">•</span>
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Optional Action Items */}
+              {msg.actionItems && msg.actionItems.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-[#2D3139] space-y-1">
+                  <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider block">
+                    RECOMMENDED ACTIONS:
+                  </span>
+                  <ul className="space-y-0.5">
+                    {msg.actionItems.map((action, aIdx) => (
+                      <li key={aIdx} className="text-[11px] text-[#A0A6B2] flex items-start gap-1.5">
+                        <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0 mt-0.5" />
+                        <span>{action}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {isAskingAdvisor && (
+            <div className="p-3 rounded bg-[#111418] border border-[#2D3139] flex items-center gap-2 text-xs text-[#8A919B]">
+              <RefreshCw className="w-3.5 h-3.5 text-[#3B82F6] animate-spin" />
+              <span>CONSULTING_GEMINI_ADVISOR... Analyzing competency bar for {profile.targetRole}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Chat Input Bar */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAskMentor();
+          }}
+          className="flex items-center gap-2 pt-1"
+        >
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder={`Ask Gemini anything about ${profile.targetRole} interviews, questions, or projects...`}
+            disabled={isAskingAdvisor}
+            className="flex-1 px-3 py-2 rounded bg-[#111418] border border-[#2D3139] focus:border-[#3B82F6] text-white text-xs placeholder:text-[#555C68] outline-none"
+          />
+          <button
+            type="submit"
+            disabled={isAskingAdvisor || !chatInput.trim()}
+            className="px-3.5 py-2 rounded bg-[#3B82F6] hover:bg-[#2563EB] disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0"
+          >
+            <Send className="w-3 h-3" />
+            <span>ASK</span>
+          </button>
+        </form>
       </div>
     </div>
   );
