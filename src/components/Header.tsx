@@ -156,32 +156,32 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         <button
           id="header-resume-upload-btn"
           onClick={() => setIsResumeModalOpen(true)}
-          className="flex items-center gap-1 px-2 py-1 rounded bg-[#1E2228] hover:bg-[#282D36] text-[#3B82F6] border border-[#3B82F6]/40 text-[11px] font-mono font-bold"
-          title="Upload or Parse Resume"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1E2228] hover:bg-[#282D36] text-blue-400 border border-blue-500/30 text-xs font-medium transition-colors"
+          title="Upload or Parse Resume with AI"
         >
-          <Upload className="w-3 h-3" />
-          <span className="hidden sm:inline">RESUME</span>
+          <Upload className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Upload Resume</span>
         </button>
 
         {/* Notifications Popover Bell */}
         <NotificationsPopover />
 
         {/* Switch to Landing Page or Reset */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             id="header-landing-btn"
             onClick={() => setActivePage(activePage === 'landing' ? 'dashboard' : 'landing')}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono font-medium bg-[#3B82F6] hover:bg-[#2563EB] text-white transition-colors border border-[#3B82F6]"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm"
           >
             {activePage === 'landing' ? (
               <>
-                <Compass className="w-3 h-3" />
-                <span>WORKSPACE</span>
+                <Compass className="w-3.5 h-3.5" />
+                <span>Workspace</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-3 h-3" />
-                <span className="hidden sm:inline">LANDING</span>
+                <Sparkles className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Platform Overview</span>
               </>
             )}
           </button>
@@ -189,13 +189,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           <button
             id="header-reset-btn"
             onClick={() => {
-              if (window.confirm('Reset sample student data to default Gowtham R (Data Engineer @ Amazon)?')) {
-                resetAllData();
-              }
+              resetAllData();
             }}
-            className="p-1 rounded text-[#8A919B] hover:text-white hover:bg-[#1E2228] border border-[#2D3139] transition-colors"
-            title="Reset to default sample data"
-            aria-label="Reset to default demo data"
+            className="p-1.5 rounded text-[#8A919B] hover:text-white hover:bg-[#1E2228] border border-[#2D3139] transition-colors"
+            title="Reset Workspace"
+            aria-label="Reset Workspace"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>

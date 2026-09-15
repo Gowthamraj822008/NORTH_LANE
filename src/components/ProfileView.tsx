@@ -37,6 +37,7 @@ export const ProfileView: React.FC = () => {
     removeExperienceFromProfile,
     addProjectToProfile,
     removeProjectFromProfile,
+    clearProfileToEmpty,
     setActivePage
   } = useApp();
 
@@ -184,46 +185,75 @@ export const ProfileView: React.FC = () => {
           )}
 
           <button
+            onClick={() => {
+              clearProfileToEmpty();
+            }}
+            className="px-3 py-1.5 rounded bg-[#111418] hover:bg-[#1E2228] text-[#8A919B] hover:text-white text-xs font-medium border border-[#2D3139] transition-colors"
+            title="Start with an empty profile"
+          >
+            Clear / Start Blank
+          </button>
+
+          <button
             id="open-resume-extractor-btn"
             onClick={() => setIsResumeModalOpen(true)}
-            className="px-3 py-1.5 rounded bg-[#3B82F6] hover:bg-[#2563EB] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+            className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
           >
             <Upload className="w-3.5 h-3.5" />
-            <span>EXTRACT_FROM_RESUME</span>
+            <span>AI Resume Parsing</span>
           </button>
         </div>
       </div>
 
       {/* Resume Card Status Banner */}
-      <div className="p-3.5 rounded bg-[#16191E] border border-[#2D3139] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20 text-[#3B82F6]">
-            <FileText className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-white">
-                {profile.resume?.fileName || 'Gowtham_R_Data_Engineer_Resume.pdf'}
-              </span>
-              <span className="px-1.5 py-0.2 rounded bg-green-500/20 text-green-400 border border-green-500/30 text-[9px] font-bold">
-                ATS SCORE: {profile.resume?.atsScore || 78}/100
-              </span>
+      <div className="p-4 rounded-xl bg-[#16191E] border border-[#2D3139] space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <FileText className="w-5 h-5" />
             </div>
-            <p className="text-[10px] text-[#8A919B] mt-0.5">
-              Extracted Skills: {profile.resume?.extractedSkills?.length || 8} • Sync Status: ACTIVE
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-white">
+                  {profile.resume?.fileName || `${profile.name.replace(/\s+/g, '_')}_Resume.pdf`}
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold">
+                  ATS Score: {profile.resume?.atsScore || 82}/100
+                </span>
+                {profile.resume?.isLiveInference && (
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 text-[10px]">
+                    Live Gemini
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-[#8A919B] mt-0.5">
+                Extracted Skills: {profile.resume?.extractedSkills?.length || profile.currentSkills.length} • Verification Status: Active
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsResumeModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-[#111418] hover:bg-[#1E2228] text-blue-400 border border-blue-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Parse Another Resume</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsResumeModalOpen(true)}
-            className="px-3 py-1 rounded bg-[#111418] hover:bg-[#1E2228] text-[#3B82F6] border border-[#3B82F6]/40 text-[11px] font-bold flex items-center gap-1"
-          >
-            <Upload className="w-3 h-3" />
-            <span>RE-UPLOAD / PARSE</span>
-          </button>
-        </div>
+        {/* If Placement AI Summary exists, display it */}
+        {profile.resume?.placementReadinessSummary && (
+          <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 text-xs space-y-1">
+            <span className="text-[11px] text-blue-400 font-semibold uppercase tracking-wider block">
+              Gemini Placement Readiness Evaluation
+            </span>
+            <p className="text-[#C8CED8] leading-relaxed">
+              {profile.resume.placementReadinessSummary}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Academic & Target Role Form */}

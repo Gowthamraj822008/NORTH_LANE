@@ -20,6 +20,7 @@ import {
 } from '../types';
 import {
   INITIAL_STUDENT_PROFILE,
+  EMPTY_STUDENT_PROFILE,
   INITIAL_ASSESSED_SKILLS
 } from '../data/sampleData';
 import {
@@ -40,6 +41,12 @@ import {
   calculateInternshipCompatibility,
   extractSkillsFromResumeText
 } from '../utils/analysisEngine';
+import {
+  parseResumeWithAI,
+  checkAIHealth,
+  ExtractedResumeAI,
+  HealthStatus
+} from '../services/aiService';
 import confetti from 'canvas-confetti';
 
 interface AppContextType {
@@ -57,6 +64,7 @@ interface AppContextType {
   gapAnalysis: SkillGapAnalysisResult;
   readiness: { overallScore: number; breakdown: ReadinessBreakdown };
   roadmapProgress: number;
+  aiHealth: HealthStatus | null;
 
   updateProfile: (updated: Partial<StudentProfile>) => void;
   addSkillToProfile: (skillName: string) => void;
@@ -67,6 +75,8 @@ interface AppContextType {
 
   // Resume & Experience
   uploadAndParseResume: (text: string, fileName?: string, fileSize?: string) => { skills: string[]; atsScore: number };
+  uploadAndParseResumeAsync: (text: string, fileName?: string, fileSize?: string) => Promise<ExtractedResumeAI>;
+  clearProfileToEmpty: () => void;
   addExperienceToProfile: (exp: Omit<StudentExperience, 'id'>) => void;
   removeExperienceFromProfile: (expId: string) => void;
   addProjectToProfile: (proj: Omit<StudentProject, 'id'>) => void;
@@ -324,6 +334,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [notifications]);
 
+  // AI Health Check on Mount
+  const [aiHealth, setAiHealth] = useState<HealthStatus | null>(null);
+  useEffect(() => {
+    checkAIHealth().then(setAiHealth).catch(() => {});
+  }, []);
+
   // Derived analyses
   const gapAnalysis = performSkillGapAnalysis(profile, assessedSkills);
   const readiness = calculateReadinessScore(profile, assessedSkills, roadmap);
@@ -479,6 +495,110 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     return { skills: extracted.skills, atsScore: extracted.atsScore };
+  };
+
+  const uploadAndParseResumeAsync = async (text: string, fileName?: string, fileSize?: string): Promise<ExtractedResumeAI> => {
+    let aiResult: ExtractedResumeAI;
+    try {
+      aiResult = await parseResumeWithAI(text, profile.targetRole);
+    } catch (err) {
+      console.warn('AI parsing failed, using fallback engine:', err);
+      const fallback = extractSkillsFromResumeText(text);
+      aiResult = {
+        candidateName: null,
+        email: null,
+        phone: null,
+        degree: null,
+        college: null,
+        graduationYear: null,
+        skills: fallback.skills,
+        atsScore: fallback.atsScore,
+        isLiveInference: false
+      };
+    }
+
+    const updatedSkillsList = Array.from(
+      new Set([...profile.currentSkills, ...(aiResult.skills || [])])
+    );
+
+    const detectedExperiences: StudentExperience[] = (aiResult.experiences || []).map((exp, idx) => ({
+      id: `ai-exp-${Date.now()}-${idx}`,
+      title: exp.title,
+      organization: exp.organization,
+      role: exp.title,
+      duration: exp.duration || 'Past Experience',
+      technologies: [],
+      description: exp.summary
+    }));
+
+    const detectedProjects: StudentProject[] = (aiResult.projects || []).map((proj, idx) => ({
+      id: `ai-proj-${Date.now()}-${idx}`,
+      title: proj.title,
+      description: proj.summary,
+      technologies: proj.technologies || []
+    }));
+
+    setProfile(prev => ({
+      ...prev,
+      name: (aiResult.candidateName && aiResult.candidateName !== 'Applicant') ? aiResult.candidateName : prev.name,
+      degree: aiResult.degree || prev.degree,
+      college: aiResult.college || prev.college,
+      graduationYear: aiResult.graduationYear || prev.graduationYear,
+      currentSkills: updatedSkillsList,
+      experiences: detectedExperiences.length > 0 ? [...(prev.experiences || []), ...detectedExperiences] : prev.experiences,
+      projects: detectedProjects.length > 0 ? [...(prev.projects || []), ...detectedProjects] : prev.projects,
+      resume: {
+        fileName: fileName || 'Uploaded_Resume.pdf',
+        fileSize: fileSize || `${Math.round(text.length / 1024)} KB`,
+        uploadedAt: new Date().toISOString(),
+        rawText: text,
+        extractedSkills: aiResult.skills || [],
+        extractedExperience: (aiResult.experiences || []).map(e => `${e.title} at ${e.organization}`),
+        extractedProjects: (aiResult.projects || []).map(p => p.title),
+        atsScore: aiResult.atsScore,
+        atsRubric: aiResult.atsRubric,
+        strengths: aiResult.strengths,
+        weaknesses: aiResult.weaknesses,
+        actionableRecommendations: aiResult.actionableRecommendations,
+        placementReadinessSummary: aiResult.placementReadinessSummary,
+        isLiveInference: aiResult.isLiveInference
+      }
+    }));
+
+    setAssessedSkills(prev => {
+      const next = { ...prev };
+      (aiResult.skills || []).forEach(sk => {
+        if (!next[sk]) {
+          next[sk] = {
+            name: sk,
+            level: 'intermediate',
+            category: 'core',
+            source: 'resume_extracted'
+          };
+        }
+      });
+      return next;
+    });
+
+    addNotification({
+      type: 'system',
+      title: aiResult.isLiveInference ? 'Gemini AI Resume Analysis Complete' : 'Resume Skills Extracted',
+      message: `Parsed ${aiResult.skills?.length || 0} skills with ATS score ${aiResult.atsScore}/100. ${aiResult.isLiveInference ? '(Live Gemini Model)' : ''}`,
+      actionUrl: 'profile'
+    });
+
+    return aiResult;
+  };
+
+  const clearProfileToEmpty = () => {
+    setProfile(EMPTY_STUDENT_PROFILE);
+    setAssessedSkills({});
+    addNotification({
+      type: 'system',
+      title: 'Profile Reset to Blank',
+      message: 'You can now enter your own real educational background, skills, and target roles.',
+      actionUrl: 'profile'
+    });
   };
 
   const addExperienceToProfile = (exp: Omit<StudentExperience, 'id'>) => {
@@ -789,6 +909,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         gapAnalysis,
         readiness,
         roadmapProgress,
+        aiHealth,
         updateProfile,
         addSkillToProfile,
         removeSkillFromProfile,
@@ -796,6 +917,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rateSkill,
         updateRoadmapStepStatus,
         uploadAndParseResume,
+        uploadAndParseResumeAsync,
+        clearProfileToEmpty,
         addExperienceToProfile,
         removeExperienceFromProfile,
         addProjectToProfile,

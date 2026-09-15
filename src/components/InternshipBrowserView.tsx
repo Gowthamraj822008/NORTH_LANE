@@ -19,10 +19,12 @@ import {
   Users,
   Eye,
   SlidersHorizontal,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Internship } from '../types';
+import { tailorApplicationWithAI } from '../services/aiService';
 
 interface InternshipBrowserViewProps {
   initialSavedOnly?: boolean;
@@ -60,6 +62,8 @@ export const InternshipBrowserView: React.FC<InternshipBrowserViewProps> = ({ in
   const [applyModalInternship, setApplyModalInternship] = useState<Internship | null>(null);
   const [coverNote, setCoverNote] = useState('');
   const [applySuccessMsg, setApplySuccessMsg] = useState<string | null>(null);
+  const [isGeneratingPitch, setIsGeneratingPitch] = useState(false);
+  const [alignmentPoints, setAlignmentPoints] = useState<string[]>([]);
 
   // Extract available categories
   const categories = useMemo(() => {
@@ -741,7 +745,7 @@ export const InternshipBrowserView: React.FC<InternshipBrowserViewProps> = ({ in
                       <div className="flex justify-between">
                         <span className="text-[#8A919B]">Active Resume:</span>
                         <span className="text-[#3B82F6]">
-                          {profile.resume?.fileName || 'Gowtham_R_Resume.pdf'} (ATS: {profile.resume?.atsScore || 78}/100)
+                          {profile.resume?.fileName || `${profile.name.replace(/\s+/g, '_')}_Resume.pdf`} (ATS: {profile.resume?.atsScore || 82}/100)
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -753,15 +757,62 @@ export const InternshipBrowserView: React.FC<InternshipBrowserViewProps> = ({ in
                     </div>
                   </div>
 
-                  {/* Cover Pitch Note */}
-                  <div className="space-y-1 text-[11px]">
-                    <span className="text-[#8A919B]">COVER PITCH / RECRUITER NOTE:</span>
+                  {/* Cover Pitch Note with AI generator */}
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#8A919B]">COVER PITCH / RECRUITER NOTE:</span>
+                      <button
+                        type="button"
+                        disabled={isGeneratingPitch}
+                        onClick={async () => {
+                          setIsGeneratingPitch(true);
+                          try {
+                            const res = await tailorApplicationWithAI(profile, applyModalInternship);
+                            if (res.pitch) {
+                              setCoverNote(res.pitch);
+                              if (res.alignmentHighlights) {
+                                setAlignmentPoints(res.alignmentHighlights);
+                              }
+                            }
+                          } catch (err) {
+                            console.error('Failed to generate tailored pitch:', err);
+                          } finally {
+                            setIsGeneratingPitch(false);
+                          }
+                        }}
+                        className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium cursor-pointer"
+                      >
+                        {isGeneratingPitch ? (
+                          <>
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <span>Crafting pitch with Gemini...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3 text-purple-400" />
+                            <span>Draft Tailored Pitch with Gemini</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <textarea
                       rows={4}
                       value={coverNote}
                       onChange={e => setCoverNote(e.target.value)}
-                      className="w-full bg-[#111418] border border-[#2D3139] rounded p-2 text-xs text-white focus:outline-hidden focus:border-[#3B82F6]"
+                      placeholder="Explain why your technical background and experience are an optimal fit for this opportunity..."
+                      className="w-full bg-[#111418] border border-[#2D3139] rounded p-2.5 text-xs text-white focus:outline-hidden focus:border-[#3B82F6] font-sans"
                     />
+                    {alignmentPoints.length > 0 && (
+                      <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] text-[#C0C8D6] space-y-1">
+                        <span className="font-semibold text-blue-400 block">AI Strategic Alignment:</span>
+                        {alignmentPoints.map((pt, idx) => (
+                          <div key={idx} className="flex items-start gap-1">
+                            <span className="text-blue-400">•</span>
+                            <span>{pt}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </>
               )}

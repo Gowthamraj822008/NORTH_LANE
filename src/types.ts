@@ -40,6 +40,17 @@ export interface ResumeData {
   extractedExperience: string[];
   extractedProjects: string[];
   atsScore?: number;
+  atsRubric?: {
+    keywordAlignment: number;
+    quantifiedImpact: number;
+    structuralClarity: number;
+    techStackDepth: number;
+  };
+  strengths?: string[];
+  weaknesses?: string[];
+  actionableRecommendations?: string[];
+  placementReadinessSummary?: string;
+  isLiveInference?: boolean;
 }
 
 export interface StudentProfile {
